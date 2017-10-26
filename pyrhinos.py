@@ -1,6 +1,7 @@
 import csv
 import datetime
 
+# Dictionary to convert month names into numbers
 months = {
     'jan': 1,
     'feb': 2,
@@ -31,17 +32,18 @@ def parseDate(value):
             year=int(splitVal[1])
             if year < 10:
                 year += 2000
-            else:
+            elif year < 100:
                 year += 1900
             month=months[str.lower(splitVal[0])]
         else:
             year = int(value)
             month = 1
+
         # Assume the 1st of January if only year is present
-        return datetime.datetime(year, month, 1)
+        return datetime.date(year, month, 1)
     except Exception as e:
         # Convert the date from the format '04.02.1986'
-        return datetime.datetime.strptime(value, '%d.%m.%Y')
+        return datetime.datetime.strptime(value, '%d.%m.%Y').date()
 
 rhinos = {}
 with open('data.csv') as csvfile:
@@ -71,13 +73,25 @@ with open('data.csv') as csvfile:
 
     # Do another loop to find offsprings
     for parentId, parent in rhinos.items():
-        prevChildDate = 0
-        ageGapSum = datetime.timedelta(0)
+        parent['offspring'] = []
         for childId, child in rhinos.items():
             if child['sire']==parentId or child['dam']==parentId:
                 parent['offspring'].append(child)
-                if prevChildDate==0:
-                    prevChildDate = child['birthdate']
-                ageGapSum = ageGapSum + (child['birthdate'] - prevChildDate)
+
+    # Do another loop to sort the offspring by birth date
+    for parentId, parent in rhinos.items():
+        parent['offspring'].sort(key = lambda child: child['birthdate'])
+        # Then calculate the age gap bewteen them
+        ageGapSum = datetime.timedelta()
+        prevChildDate = ''
+        for child in parent['offspring']:
+            if prevChildDate=='':
+                prevChildDate = child['birthdate']
+            else:
+                ageGapSum += (child['birthdate'] - prevChildDate)
         if len(parent['offspring']) > 1:
-            print(ageGapSum / len(parent['offspring']))
+            parent['avgGap'] = ageGapSum / len(parent['offspring'])
+            if parent['avgGap'] > datetime.timedelta(days=50000):
+                print(parentId, parent['avgGap'])
+
+    
