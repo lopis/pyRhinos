@@ -38,6 +38,7 @@ avgGap = "Avg time between calves (years)"
 vAge = "Age on first calf (years)"
 offspring = "Offspring"
 childCount = "Offspring Count"
+chronology = "Chronology"
 
 # Function to convert strings into useful dates
 def parseDate(value):
@@ -86,6 +87,11 @@ rhinos = {}
 parents = []
 moms = []
 dads = []
+momsWithWildMoms = []
+restOfTheMoms = []
+dadsWithWildMoms = []
+restOfTheDads = []
+
 stats = {
     'institutions': {},
     'sexes': {},
@@ -110,6 +116,8 @@ with open('data.csv') as csvfile:
             newRhino[avgGap] = 0
             newRhino[vAge] = ''
             newRhino[offspring] = []
+            newRhino[chronology] = getChronology(row[10:])
+            print(newRhino[chronology])
             # Add the new rhino to the dictionary
             rhinos[row[0]] = newRhino
             # Update location stats:
@@ -161,8 +169,15 @@ with open('data.csv') as csvfile:
                 moms.append(parent)
                 if parent[dam] == 'wild':
                     stats['wild_moms'].append(parent[rid])
+                    momsWithWildMoms.append(parent)
+                else:
+                    restOfTheMoms.append(parent)
             elif parent[sex] == 'm':
                 dads.append(parent)
+                if parent[dam] == 'wild':
+                    dadsWithWildMoms.append(parent)
+                else:
+                    restOfTheDads.append(parent)
 
     fieldnames = [
         parentType,
@@ -180,6 +195,10 @@ with open('data.csv') as csvfile:
 
     printToCSV('dads.csv', dads, fieldnames)
     printToCSV('moms.csv', moms, fieldnames)
+    printToCSV('wild_moms.csv', momsWithWildMoms, fieldnames)
+    printToCSV('zoo_moms.csv', restOfTheMoms, fieldnames)
+    printToCSV('wild_dads.csv', dadsWithWildMoms, fieldnames)
+    printToCSV('zoo_dads.csv', restOfTheDads, fieldnames)
 
     # Print stats:
     print('institutions:', stats['institutions'], '\n')
