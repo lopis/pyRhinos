@@ -83,6 +83,17 @@ def printToCSV(fileName, parents, fieldnames):
             writer.writerow(child) # Followed by each child of hers
     out_file.close()
 
+def getChronology(locations):
+    chrono = []
+    i = 0
+    while i < len(locations) and locations[i] != "":
+        chrono.append({
+            'location': locations[i],
+            'date': parseDate(locations[i + 1])
+        })
+        i += 2
+    return chrono
+
 rhinos = {}
 parents = []
 moms = []
