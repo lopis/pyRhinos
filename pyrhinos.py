@@ -1,5 +1,6 @@
 import csv
 import datetime
+from datetime import timedelta
 import copy
 
 # Dictionary to convert month names into numbers
@@ -67,7 +68,7 @@ def parseDate(value):
         # Convert the date from the format '04.02.1986'
         return datetime.datetime.strptime(value, '%d.%m.%Y').date()
 
-def printToCSV(fileName, parents, fieldnames):
+def printToCSV(fileName, parents, fieldnames, noChildren=0):
     print(fileName, len(parents))
     out_file = open(fileName, 'w', newline='')
     writer = csv.DictWriter(
@@ -79,6 +80,7 @@ def printToCSV(fileName, parents, fieldnames):
     writer.writeheader() # Write the header first
     for parent in parents:
         writer.writerow(parent) # Write each parent
+        if noChildren: continue
         for child in parent[offspring]:
             writer.writerow(child) # Followed by each child of hers
     out_file.close()
@@ -87,12 +89,26 @@ def getChronology(locations):
     chrono = []
     i = 0
     while i < len(locations) and locations[i] != "":
-        chrono.append({
-            'location': locations[i],
-            'date': parseDate(locations[i + 1])
-        })
+        try:
+            chrono.append({
+                'location': locations[i],
+                'date': parseDate(locations[i + 1])
+            })
+        except Exception as e:
+            print('Skipped chrono:', e)
         i += 2
     return chrono
+
+def getLocation(rhino, date):
+    currentLocation = ""
+    print('death:', rhino[deathdate])
+    print('date:', date)
+    if date < rhino[deathdate] and date > rhino[birthdate]:
+        for c in rhino[chronology]:
+            if c['date'] < date:
+                currentLocation = c['location']
+
+    return currentLocation
 
 rhinos = {}
 parents = []
@@ -117,18 +133,18 @@ with open('data.csv') as csvfile:
     for row in readCSV:
         try:
             newRhino = {}
-            newRhino[rid] = row[0]
+            newRhino[rid] = row[0].strip()
             newRhino[sex] = row[1]
             newRhino[birthdate] = parseDate(row[2])
+            newRhino[deathdate] = parseDate(row[2])
             newRhino[sire] = row[3]
-            newRhino[dam] = row[4]
+            newRhino[dam] = row[4].strip()
             newRhino[birthPlace] = row[5]
             newRhino[location] = row[6] if len(row[6]) > 0 else row[5]
             newRhino[avgGap] = 0
             newRhino[vAge] = ''
             newRhino[offspring] = []
             newRhino[chronology] = getChronology(row[10:])
-            print(newRhino[chronology])
             # Add the new rhino to the dictionary
             rhinos[row[0]] = newRhino
             # Update location stats:
@@ -162,6 +178,7 @@ with open('data.csv') as csvfile:
         for child in parent[offspring]:
             if prevChildDate=='':
                 parent[vAge] = "{:.1f}".format((child[birthdate] - parent[birthdate]).days / 365).replace('.', ',')
+                print(parent[vAge])
             else:
                 ageGapSum += (child[birthdate] - prevChildDate)
             prevChildDate = child[birthdate]
@@ -190,6 +207,18 @@ with open('data.csv') as csvfile:
                 else:
                     restOfTheDads.append(parent)
 
+    grandmas = []
+    for mom in moms:
+        if mom[dam] != 'wild':
+            grandma = rhinos[mom[dam]]
+            for child in mom[offspring]:
+                grandmaLocation = getLocation(grandma, child[birthdate] - timedelta(days=547))
+                grandmas.append({
+                    'childId': child[rid],
+                    'childLocation': child[location],
+                    'grandmaLocation': grandmaLocation
+                })
+
     fieldnames = [
         parentType,
         rid,
@@ -204,12 +233,19 @@ with open('data.csv') as csvfile:
         childCount
     ]
 
+    grandmaFields = [
+        'childId',
+        'childLocation',
+        'grandmaLocation'
+    ]
+
     printToCSV('dads.csv', dads, fieldnames)
     printToCSV('moms.csv', moms, fieldnames)
     printToCSV('wild_moms.csv', momsWithWildMoms, fieldnames)
     printToCSV('zoo_moms.csv', restOfTheMoms, fieldnames)
     printToCSV('wild_dads.csv', dadsWithWildMoms, fieldnames)
     printToCSV('zoo_dads.csv', restOfTheDads, fieldnames)
+    printToCSV('grandmas.csv', grandmas, grandmaFields, 1)
 
     # Print stats:
     print('institutions:', stats['institutions'], '\n')
