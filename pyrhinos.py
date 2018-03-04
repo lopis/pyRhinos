@@ -68,7 +68,7 @@ def parseDate(value):
         # Convert the date from the format '04.02.1986'
         return datetime.datetime.strptime(value, '%d.%m.%Y').date()
 
-def printToCSV(fileName, parents, fieldnames, noChildren=0):
+def printToCSV(fileName, parents, fieldnames, noChildren=False):
     print(fileName, len(parents))
     out_file = open(fileName, 'w', newline='')
     writer = csv.DictWriter(
@@ -92,22 +92,21 @@ def getChronology(locations):
         try:
             chrono.append({
                 'location': locations[i],
-                'date': parseDate(locations[i + 1])
+                'date': parseDate(locations[i + 1]),
+                'dateLeft': parseDate(locations[i + 3]) if (i+3) < len(locations) and locations[i + 3] != '' else ''
             })
         except Exception as e:
-            print('Skipped chrono:', e)
+            if locations[i + 1] != '':
+                print('Skipped chrono:', e)
         i += 2
     return chrono
 
 def getLocation(rhino, date):
     currentLocation = ""
-    print('death:', rhino[deathdate])
-    print('date:', date)
     if date < rhino[deathdate] and date > rhino[birthdate]:
         for c in rhino[chronology]:
             if c['date'] < date:
                 currentLocation = c['location']
-
     return currentLocation
 
 rhinos = {}
@@ -178,7 +177,6 @@ with open('data.csv') as csvfile:
         for child in parent[offspring]:
             if prevChildDate=='':
                 parent[vAge] = "{:.1f}".format((child[birthdate] - parent[birthdate]).days / 365).replace('.', ',')
-                print(parent[vAge])
             else:
                 ageGapSum += (child[birthdate] - prevChildDate)
             prevChildDate = child[birthdate]
@@ -207,6 +205,7 @@ with open('data.csv') as csvfile:
                 else:
                     restOfTheDads.append(parent)
 
+    # Check if grandmas were ever present at the birthPlace of their grand children
     grandmas = []
     for mom in moms:
         if mom[dam] != 'wild':
@@ -245,7 +244,7 @@ with open('data.csv') as csvfile:
     printToCSV('zoo_moms.csv', restOfTheMoms, fieldnames)
     printToCSV('wild_dads.csv', dadsWithWildMoms, fieldnames)
     printToCSV('zoo_dads.csv', restOfTheDads, fieldnames)
-    printToCSV('grandmas.csv', grandmas, grandmaFields, 1)
+    printToCSV('grandmas.csv', grandmas, grandmaFields, True)
 
     # Print stats:
     print('institutions:', stats['institutions'], '\n')
